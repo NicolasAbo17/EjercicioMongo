@@ -1,14 +1,9 @@
 var express = require("express");
 var router = express.Router();
 
-var messageLogic = require("../logic/messageLogic");
+var messageLogic = require("../public/logic/messageLogic");
 const ws = require("../wslib");
-const Message = require("../models/message");
-
-/* GET users listing. */
-router.get("/", function (req, res, next) {
-  res.send("respond with a resource");
-});
+const Message = require("../public/models/message");
 
 router.get("/api/messages", function (req, res, next) {
   Message.findAll().then((result) => {

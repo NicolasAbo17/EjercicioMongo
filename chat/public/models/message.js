@@ -1,5 +1,5 @@
 const { Model, DataTypes } = require("sequelize");
-const sequelize = require("../lib/sequelize");
+const sequelize = require("../../lib/sequelize");
 
 class Message extends Model {}
 

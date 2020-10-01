@@ -2,7 +2,7 @@ var messageLogic = require("../logic/messageLogic.js");
 const Message = require("../models/Message");
 
 function postMessage(message) {
-  const { error } = messageLogic.validateMessage(req.body);
+  const { error } = messageLogic.validateMessage(message.body);
   if (error) {
     return error;
   }
