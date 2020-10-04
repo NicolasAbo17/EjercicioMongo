@@ -1,14 +1,14 @@
 var express = require("express");
 var router = express.Router();
 
+var [  getMessages,  postMessage,  getMessage,  putMessage,  deleteMessage] = require("../public/controllers/messageController");
 var messageLogic = require("../public/logic/messageLogic");
+
 const ws = require("../wslib");
-const Message = require("../public/models/message");
 
 router.get("/api/messages", function (req, res, next) {
-  Message.findAll().then((result) => {
-    res.send(result);
-  });
+  const messages = await getMessages();
+  res.send(messages);
 });
 
 router.post("/api/messages/create", function (req, res, next) {
@@ -18,43 +18,19 @@ router.post("/api/messages/create", function (req, res, next) {
     return res.status(400).send(error);
   }
 
-  Message.create({
-    message: req.body.message,
-    author: req.body.author,
-    ts: req.body.ts,
-  }).then((result) => {
-    res.send(result);
-  });
+  req.body["ts"] = new Date().getTime();
+  const newMessage = await postMessage(req.body);
+  ws.sendMessages();
+  res.send(newMessage.ops[0]);
+
 });
 
 router.get("/api/messages/:ts", (req, res) => {
-  Message.findOne({
-    where: {
-      ts: messageTs,
-    },
-  }).then((response) => {
-    if (response === null)
-      return res
-        .status(404)
-        .send("The message with the given ts was not found.");
-    res.send(response);
-  });
-});
-
-router.post("/api/messages/create", (req, res) => {
-  const { error } = messageLogic.validateMessage(req.body);
-
-  if (error) {
-    return res.status(400).send(error);
-  }
-
-  Message.create({
-    message: req.body.message,
-    author: req.body.author,
-    ts: req.body.ts,
-  }).then((result) => {
-    res.send(result);
-  });
+  const message = await getMessage(req.params.ts);
+  if (message === null) {
+    return res.status(404).send("The message with the given ts was not found.");
+  } 
+  return res.send(message);
 });
 
 router.put("/api/messages", (req, res) => {
@@ -64,27 +40,29 @@ router.put("/api/messages", (req, res) => {
     return res.status(400).send(error);
   }
 
-  Message.update(req.body, {
-    where: {
-      ts: messageTs,
-    },
-  }).then((response) => {
-    if (response[0] !== 0) res.send({ message: "Message updated" });
-    else res.status(404).send({ message: "Message was not found" });
-  });
+  const message = await getMessage(req.body.ts);
+  if(message === null) 
+    res.status(404).send({ message: "Message was not found" });
+  else {
+    req.body.message += " (EDITED, last ts:" + req.body.ts + ")";
+    oldTs = req.body.ts;
+    req.body.ts = new Date().getTime();
+
+    updated = await putMessage(req.body, oldTs);
+    ws.sendMessages();
+    return res.send(req.body);
+  }
 });
 
 router.delete("/api/messages/delete/:ts", (req, res) => {
-  Message.destroy({
-    where: {
-      ts: messageTs,
-    },
-  }).then((response) => {
-    if (response === 1) res.status(204).send();
-    else res.status(404).send({ message: "Message was not found" });
-  });
+  const message = await getMessage(req.params.ts);
+  if(message === null) 
+    res.status(404).send({ message: "Message was not found" });
+  else{
+    removed = await deleteMessage(req.params.ts);
+    ws.sendMessages();
+    return res.send(message);
+  }
 });
-
-
 
 module.exports = router;
